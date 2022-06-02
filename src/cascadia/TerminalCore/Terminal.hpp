@@ -263,6 +263,7 @@ public:
     void UpdateSelection(SelectionDirection direction, SelectionExpansion mode, ControlKeyStates mods);
     void SelectAll();
     const bool IsInQuickEditMode() const noexcept;
+    void SwitchSelectionEndpoint();
     bool IsInMarkMode() const;
     void ToggleMarkMode();
 

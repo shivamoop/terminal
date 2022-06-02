@@ -1088,6 +1088,16 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         _updateSelection();
     }
 
+    bool ControlCore::SwitchSelectionEndpoint()
+    {
+        if (_terminal->IsSelectionActive())
+        {
+            _terminal->SwitchSelectionEndpoint();
+            return true;
+        }
+        return false;
+    }
+
     bool ControlCore::IsInMarkMode() const
     {
         return _terminal->IsInMarkMode();
