@@ -57,12 +57,8 @@ template<typename T>
 
 [[nodiscard]] NTSTATUS RemoteConsoleControl::SetForeground(_In_ HANDLE hProcess, _In_ BOOL fForeground)
 {
-    HostSignalSetForegroundData data{};
-    data.sizeInBytes = sizeof(data);
-    data.processId = HandleToULong(hProcess);
-    data.isForeground = fForeground;
-
-    return _SendTypedPacket(_pipe.get(), HostSignals::SetForeground, data);
+    auto r = _l.SetForeground(hProcess, fForeground);
+    return r;
 }
 
 [[nodiscard]] NTSTATUS RemoteConsoleControl::EndTask(_In_ HANDLE hProcessId, _In_ DWORD dwEventType, _In_ ULONG ulCtrlFlags)
