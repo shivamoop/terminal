@@ -49,9 +49,9 @@ class CharRow final
 public:
     using glyph_type = typename wchar_t;
     using value_type = typename CharRowCell;
-    using iterator = typename boost::container::small_vector_base<value_type>::iterator;
-    using const_iterator = typename boost::container::small_vector_base<value_type>::const_iterator;
-    using const_reverse_iterator = typename boost::container::small_vector_base<value_type>::const_reverse_iterator;
+    using iterator = typename til::small_vector_base<value_type>::iterator;
+    using const_iterator = typename til::small_vector_base<value_type>::const_iterator;
+    using const_reverse_iterator = typename til::small_vector_base<value_type>::const_reverse_iterator;
     using reference = typename CharRowCellReference;
 
     CharRow(til::CoordType rowWidth, ROW* const pParent) noexcept;
@@ -96,7 +96,7 @@ private:
 
 protected:
     // storage for glyph data and dbcs attributes
-    boost::container::small_vector<value_type, 120> _data;
+    til::small_vector<value_type, 120> _data;
 
     // ROW that this CharRow belongs to
     ROW* _pParent;
