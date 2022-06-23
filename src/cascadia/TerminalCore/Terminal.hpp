@@ -344,6 +344,7 @@ private:
     bool _markMode;
     bool _quickEditMode;
     SelectionEndpoint _selectionEndpoint;
+    bool _anchorSelectionEndpoint;
 #pragma endregion
 
     std::unique_ptr<TextBuffer> _mainBuffer;
