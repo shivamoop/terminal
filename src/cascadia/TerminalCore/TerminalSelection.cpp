@@ -401,7 +401,7 @@ void Terminal::UpdateSelection(SelectionDirection direction, SelectionExpansion 
     //   We have special functionality where if you use the "switchSelectionEndpoint" action
     //   when in mark mode (moving the cursor), we anchor an endpoint and you can use the
     //   plain arrow keys to move the endpoint. This way, you don't have to hold shift anymore!
-    const bool markModeShouldMoveCursor = !_anchorSelectionEndpoint && !mods.IsShiftPressed();
+    const bool shouldMoveCursor = _markMode && !_anchorSelectionEndpoint && !mods.IsShiftPressed();
 
     // 1. Figure out which endpoint to update
     // [Mark Mode]
@@ -410,7 +410,7 @@ void Terminal::UpdateSelection(SelectionDirection direction, SelectionExpansion 
     // [Quick Edit]
     // - just move "end" (or "start" if "pivot" == "end")
     _selectionEndpoint = static_cast<SelectionEndpoint>(0);
-    if (_markMode && markModeShouldMoveCursor)
+    if (shouldMoveCursor)
     {
         WI_SetAllFlags(_selectionEndpoint, SelectionEndpoint::Start | SelectionEndpoint::End);
     }
@@ -446,7 +446,7 @@ void Terminal::UpdateSelection(SelectionDirection direction, SelectionExpansion 
 
     // 3. Actually modify the selection state
     _quickEditMode = !_markMode;
-    if (_markMode && markModeShouldMoveCursor)
+    if (shouldMoveCursor)
     {
         // [Mark Mode] + shift unpressed --> move all three (i.e. just use arrow keys)
         _selection->start = targetPos;
