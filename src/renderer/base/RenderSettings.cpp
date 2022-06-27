@@ -170,6 +170,55 @@ size_t RenderSettings::GetColorAliasIndex(const ColorAlias alias) const noexcept
     return gsl::at(_colorAliasIndices, static_cast<size_t>(alias));
 }
 
+inline float rsqrtf(float f)
+{
+#ifdef _M_ARM
+    // According to (https://doi.org/10.3390/computation9020021):
+    // > Modified Fast Inverse Square Root and Square Root Approximation Algorithms: The Method of Switching Magic Constants
+    // the relative error of FRSQRTE is [-3.0354e-3,3.2768e-3], which would lead
+    // to rounding errors after multiplication with 255. A single round of FRSQRTS
+    // supposedly improves the relative error to [-1.6183e-5,1.3127e-7].
+    const auto e = vrsqrte_f32(f);
+    e = vmul_f32(vrsqrts_f32(vmul_f32(e, e), f), e);
+#else
+    return _mm_cvtss_f32(_mm_rsqrt_ss(_mm_set_ss(f)));
+#endif
+}
+
+long redmean(COLORREF c1, COLORREF c2)
+{
+    long r1 = GetRValue(c1), g1 = GetGValue(c1), b1 = GetBValue(c1);
+    long r2 = GetRValue(c2), g2 = GetGValue(c2), b2 = GetBValue(c2);
+    long dr = r1 - r2;
+    long dg = g1 - g2;
+    long db = b1 - b2;
+    long rmean = (r1 + r2) / 2;
+    return (512 + rmean) * dr * dr / 256 + 4 * dg * dg + (767 - rmean) * db * db / 256;
+}
+
+COLORREF redmean_nudge(COLORREF c1, COLORREF c2)
+{
+    long r1 = GetRValue(c1), g1 = GetGValue(c1), b1 = GetBValue(c1);
+    long r2 = GetRValue(c2), g2 = GetGValue(c2), b2 = GetBValue(c2);
+    long dr = r2 - r1;
+    long dg = g2 - g1;
+    long db = b2 - b1;
+    long rmean = (r1 + r2) / 2;
+    long d = (512 + rmean) * dr * dr + 4 * 256 * dg * dg + (767 - rmean) * db * db;
+    if (d)
+    {
+        float dist = sqrtf(584970.0f) * rsqrtf(gsl::narrow_cast<float>(d));
+        if (dist > 1.0f)
+        {
+            dr = std::clamp<long>(r1 + lroundf(dr * dist), 0, 255);
+            dg = std::clamp<long>(g1 + lroundf(dg * dist), 0, 255);
+            db = std::clamp<long>(b1 + lroundf(db * dist), 0, 255);
+            c2 = RGB(dr, dg, db);
+        }
+    }
+    return c2;
+}
+
 // Routine Description:
 // - Calculates the RGB colors of a given text attribute, using the current
 //   color table configuration and active render settings.
@@ -193,35 +242,6 @@ std::pair<COLORREF, COLORREF> RenderSettings::GetAttributeColors(const TextAttri
 
     // We want to nudge the foreground color to make it more perceivable only for the
     // default color pairs within the color table
-    if (Feature_AdjustIndistinguishableText::IsEnabled() &&
-        GetRenderMode(Mode::DistinguishableColors) &&
-        !dimFg &&
-        (fgTextColor.IsDefault() || fgTextColor.IsLegacy()) &&
-        (bgTextColor.IsDefault() || bgTextColor.IsLegacy()))
-    {
-        const auto bgIndex = bgTextColor.IsDefault() ? AdjustedBgIndex : bgTextColor.GetIndex();
-        auto fgIndex = fgTextColor.IsDefault() ? AdjustedFgIndex : fgTextColor.GetIndex();
-
-        if (fgTextColor.IsIndex16() && (fgIndex < 8) && brightenFg)
-        {
-            // There is a special case for intense here - we need to get the bright version of the foreground color
-            fgIndex += 8;
-        }
-
-        if (swapFgAndBg)
-        {
-            const auto fg = _adjustedForegroundColors[fgIndex][bgIndex];
-            const auto bg = fgTextColor.GetColor(_colorTable, defaultFgIndex);
-            return { fg, bg };
-        }
-        else
-        {
-            const auto fg = _adjustedForegroundColors[bgIndex][fgIndex];
-            const auto bg = bgTextColor.GetColor(_colorTable, defaultBgIndex);
-            return { fg, bg };
-        }
-    }
-    else
     {
         auto fg = fgTextColor.GetColor(_colorTable, defaultFgIndex, brightenFg);
         auto bg = bgTextColor.GetColor(_colorTable, defaultBgIndex);
@@ -237,6 +257,10 @@ std::pair<COLORREF, COLORREF> RenderSettings::GetAttributeColors(const TextAttri
         if (attr.IsInvisible())
         {
             fg = bg;
+        }
+        else
+        {
+            fg = redmean_nudge(bg, fg);
         }
 
         return { fg, bg };
